@@ -4,11 +4,8 @@ const url = require('url');
 
 const proxyServer = http.createServer(httpOptions);
 
-// handle http proxy requests
 function httpOptions(clientReq, clientRes) {
   const reqUrl = url.parse(clientReq.url);
-  console.log('proxy for http request: ' + reqUrl.href);
-
   const options = {
     hostname: reqUrl.hostname,
     port: reqUrl.port,
@@ -17,7 +14,6 @@ function httpOptions(clientReq, clientRes) {
     headers: clientReq.headers
   };
 
-  // create socket connection on behalf of client, then pipe the response to client response (pass it on)
   const serverConnection = http.request(options, function (res) {
     clientRes.writeHead(res.statusCode, res.headers);
     res.pipe(clientRes);
@@ -34,22 +30,17 @@ function httpOptions(clientReq, clientRes) {
   });
 }
 
-// handle https proxy requests (CONNECT method)
 proxyServer.on('connect', (clientReq, clientSocket, head) => {
   const reqUrl = url.parse('https://' + clientReq.url);
-  console.log('proxy for https request: ' + reqUrl.href + '(path encrypted by ssl)');
-
   const options = {
     port: reqUrl.port,
     host: reqUrl.hostname
   };
 
-  // create socket connection for client, then pipe (redirect) it to client socket
   const serverSocket = net.connect(options, () => {
     clientSocket.write('HTTP/' + clientReq.httpVersion + ' 200 Connection Established\r\n' +
       'Proxy-agent: Node.js-Proxy\r\n' +
       '\r\n', 'UTF-8', () => {
-        // creating pipes in both ends
         serverSocket.write(head);
         serverSocket.pipe(clientSocket);
         clientSocket.pipe(serverSocket);
